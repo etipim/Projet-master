@@ -1,0 +1,11 @@
+# ninja log v5
+4	472	7216159094582414	CMakeFiles/AlgoConvexe.dir/main.cpp.obj	9a5fe7d18725a9ad
+3	416	7216128526196192	CMakeFiles/AlgoConvexe.dir/enveloppe.cpp.obj	ad316a092babe35b
+472	593	7216159095729771	AlgoConvexe.exe	7eff4121da77bc3f
+4	3176	7216129143363031	CMakeFiles/AlgoConvexe.dir/winbgi.cpp.obj	a90ed4513e9fcfb2
+1	345	7216571201305698	build.ninja	e4f9ec913737a94d
+3	111	7216084923469925	CMakeFiles/AlgoConvexe.dir/point.cpp.obj	c5d9b512eb81ae33
+8	119	7216084923519977	CMakeFiles/AlgoConvexe.dir/affichage.cpp.obj	a6e36c07d464964f
+10	93	7216159090788313	CMakeFiles/AlgoConvexe.dir/polygone.cpp.obj	d59ebcd424265822
+6	620	7218700013438174	CMakeFiles/AlgoConvexe.dir/main.cpp.obj	9a5fe7d18725a9ad
+621	939	7218700016576134	AlgoConvexe.exe	7eff4121da77bc3f
