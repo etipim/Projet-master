@@ -91,10 +91,10 @@ int main() {
     }
 
     for (const auto& point : newc.AllTriangles()) {
-        if (newc.sommet(point.point3)->coordonnees().z() < 1){
+        if (newc.sommet(point.point1)->coordonnees().z() == 0 && newc.sommet(point.point2)->coordonnees().z() == 0 && newc.sommet(point.point3)->coordonnees().z() == 0){
             fichierObj << "usemtl Eau"<< std::endl;
         }
-        if (newc.sommet(point.point3)->coordonnees().z() < 70 && newc.sommet(point.point3)->coordonnees().z() >= 1){
+        if (newc.sommet(point.point3)->coordonnees().z() < 70 && (newc.sommet(point.point3)->coordonnees().z() >= 1 || newc.sommet(point.point1)->coordonnees().z() >= 1 || newc.sommet(point.point2)->coordonnees().z() >= 1)){
             fichierObj << "usemtl Sable"<< std::endl;
         }
         if (newc.sommet(point.point3)->coordonnees().z() < 500 && newc.sommet(point.point3)->coordonnees().z() >= 70){
