@@ -91,7 +91,19 @@ int main() {
     }
 
     for (const auto& point : newc.AllTriangles()) {
-        fichierObj << "usemtl myTexture"<< std::endl;
+        if (newc.sommet(point.point3)->coordonnees().z() < 1){
+            fichierObj << "usemtl Eau"<< std::endl;
+        }
+        if (newc.sommet(point.point3)->coordonnees().z() < 70 && newc.sommet(point.point3)->coordonnees().z() >= 1){
+            fichierObj << "usemtl Sable"<< std::endl;
+        }
+        if (newc.sommet(point.point3)->coordonnees().z() < 500 && newc.sommet(point.point3)->coordonnees().z() >= 70){
+            fichierObj << "usemtl Gazon"<< std::endl;
+        }
+        if (newc.sommet(point.point3)->coordonnees().z() >= 500){
+            fichierObj << "usemtl Neige"<< std::endl;
+        }
+
         fichierObj << "f " << point.point1+1 << " " << point.point2+1 << " " << point.point3+1 << std::endl;
     }
 
