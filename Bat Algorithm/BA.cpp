@@ -6,7 +6,7 @@
 #include "Agent.h"
 #include <random>
 
-OriginalBA::OriginalBA(int epoch, int popSize, double loudness, double pulse_rate, double pfMin, double pfMax, int dimention, int fit_function)
+OriginalBA::OriginalBA(int epoch, int popSize, double Ub, double Lb, double pulse_rate, double pfMin, double pfMax, int dimention, int fit_function)
 {
     this->epoch = epoch;
     this->popSize = popSize;
@@ -17,8 +17,8 @@ OriginalBA::OriginalBA(int epoch, int popSize, double loudness, double pulse_rat
 
     this->fit_function = fit_function;
 
-    this->Lb = -10;
-    this->Ub = 10;
+    this->Lb = Lb;
+    this->Ub = Ub;
 
     // dimention
     this->dimention = dimention;
@@ -32,20 +32,31 @@ void OriginalBA::generate_population()
 
     for (int i = 0; i < this->popSize; ++i) {
         this->pop.push_back(init_bat());
-        this->fitness.push_back(init_fitness(pop[i]));
+        this->target.push_back(init_target(pop[i]));
+
+        this->velocity.push_back(init_velo());
     }
 
-    this->best_fitness = this->fitness[0];
+    this->best_target = this->target[0];
+}
+
+std::vector<double> OriginalBA::init_velo()
+{
+    std::vector<double> velo;
+    for (int j = 0; j < dimention; ++j) {
+        velo.push_back(0);
+    }
+    return velo;
 }
 
 // avoir la meilleur solution
 void OriginalBA::search_best_sol()
 {
-    this->g_best = this->pop[index_best_fitness()];
+    this->g_best = this->pop[index_best_target()];
 }
 
 // Algo global
-void OriginalBA::bat_algo()
+void OriginalBA::solve()
 {
     int t = 0;
     while (t < this->epoch)
@@ -56,33 +67,30 @@ void OriginalBA::bat_algo()
             // init agent
             Agent* agent = new Agent();
             agent->solution = this->pop[idx]->solution;
-            agent->velocity = this->pop[idx]->velocity;
-            double pulse_frequency = this->pfMin + (this->pfMax - this->pfMin) * random(0., 1.); // Eq. 2
 
             // change pulse frequency
-            //std::uniform_real_distribution<double> distributionPf(this->pfMin, this->pfMax);
-            //agent->pulse_frequency = distributionPf(this->generator);
+            double pulse_frequency = this->pfMin + (this->pfMax - this->pfMin) * random(0., 1.); // Eq. 2
 
 
             Agent* x_new = new Agent();
             x_new->solution = this->pop[idx]->solution;
             for (int i = 0; i < this->dimention; ++i) {
                 // change velocity
-                agent->velocity[i] = agent->velocity[i] + pulse_frequency * (this->pop[idx]->solution[i] - this->g_best->solution[i]);  // Eq. 3
-                // change solution
-                if (this->pop[idx]->solution[i] + agent->velocity[i] > this->Ub){
+                this->velocity[idx][i] = random(0., 1) * this->velocity[idx][i] + (this->g_best->solution[i] - this->pop[idx]->solution[i]) * pulse_frequency; // Eq. 3
+
+                // Update the solution based on the updated velocity
+                double new_solution = x_new->solution[i] + this->velocity[idx][i];
+
+                // change solution and insert born
+                if (new_solution > this->Ub){
                     x_new->solution[i] = this->Ub;
-                } if (this->pop[idx]->solution[i] + agent->velocity[i] < this->Lb){
-                    x_new->solution[i] = this->Lb;
-                } else {
-                    x_new->solution[i] = this->pop[idx]->solution[i] + agent->velocity[i];  // Eq. 4
                 }
-
-
-                // search around g_best position
-                //if (random(0, 1) > this->pulse_rate){
-                //    x_new->solution[i] = this->g_best->solution[i] + 0.001 * random(0, this->dimention);
-                //}
+                else if (new_solution < this->Lb){
+                    x_new->solution[i] = this->Lb;
+                }
+                else {
+                    x_new->solution[i] = new_solution;  // Eq. 4
+                }
             }
 
             agent->solution = x_new->solution;
@@ -94,24 +102,26 @@ void OriginalBA::bat_algo()
         std::vector<int> pop_child_index;
         std::vector<Agent*> pop_child;
         for (int idx = 0; idx < this->popSize; ++idx) {
-            //if (this->fitness[idx] > init_fitness(pop_new[idx]) && random(0, 1) < this->loudness){
-            if (this->fitness[idx] > init_fitness(pop_new[idx])) {
+            if (this->target[idx] > init_target(pop_new[idx])) {
                 this->pop[idx] = pop_new[idx];
-                this->fitness[idx] = init_fitness(pop_new[idx]);
+                this->target[idx] = init_target(pop_new[idx]);
             } else {
-                if (random(0, 1) < this->pulse_rate) {
+                if (random(0, 1) > this->pulse_rate) {
                     Agent* agent = new Agent();
                     agent->solution = this->pop[idx]->solution;
-                    agent->velocity = this->pop[idx]->velocity;
+                    //agent->velocity = this->pop[idx]->velocity;
                     for (int i = 0; i < this->dimention; ++i) {
-                        double new_sol = new double();
-                                this->g_best->solution[i] + 0.01 * random(this->Lb, this->Ub);
-                        if (new_sol > this->Ub){
+                        // Update the solution based on the updated velocity
+                        double new_solution = this->g_best->solution[i] + 0.01 * random(this->Lb, this->Ub);
+
+                        if (new_solution > this->Ub){
                             agent->solution[i] = this->Ub;
-                        } if (new_sol < this->Lb){
+                        }
+                        else if (new_solution < this->Lb){
                             agent->solution[i] = this->Lb;
-                        } else {
-                            agent->solution[i] = new_sol;  // Eq. 4
+                        }
+                        else { // (new_solution < this->Ub && new_solution > this->Lb) {
+                            agent->solution[i] = new_solution;
                         }
                     }
                     pop_child_index.push_back(idx);
@@ -121,29 +131,35 @@ void OriginalBA::bat_algo()
         }
 
         for (int idx = 0; idx < pop_child_index.size(); ++idx) {
-//            if (init_fitness(pop_new[pop_child_index[idx]]) > init_fitness(pop_child[idx])) {
-//                pop_new[pop_child_index[idx]] = pop_child[idx];
-//                //this->fitness[pop_child_index[idx]] = init_fitness(pop_child[idx]);
-//            }
-
-            if (this->fitness[pop_child_index[idx]] > init_fitness(pop_child[idx])) {
-                this->pop[pop_child_index[idx]] = pop_child[idx];
-                this->fitness[pop_child_index[idx]] = init_fitness(pop_child[idx]);
+            if (init_target(pop_new[pop_child_index[idx]]) > init_target(pop_child[idx])) {
+                pop_new[pop_child_index[idx]]->solution = pop_child[idx]->solution;
+                //this->fitness[pop_child_index[idx]] = init_target(pop_child[idx]);
             }
+
+//            if (this->fitness[pop_child_index[idx]] > init_target(pop_child[idx])) {
+//                this->pop[pop_child_index[idx]]->solution = pop_child[idx]->solution;
+//                this->fitness[pop_child_index[idx]] = init_target(pop_child[idx]);
+//            }
         }
 
-        //this->pop = pop_new;
+        this->pop = pop_new;
         for (int idx = 0; idx < this->popSize; ++idx) {
-            this->fitness[idx] = init_fitness(this->pop[idx]);
-            if (this->fitness[idx] < this->best_fitness){
-                this->best_fitness = this->fitness[idx];
+            this->target[idx] = init_target(this->pop[idx]);
+            if (this->target[idx] < this->best_target){
+                this->best_target = this->target[idx];
             }
         }
 
 
         //this->loudness = 0.97 * this->loudness;
         //pulse_rate = 1 - std::exp(-0.1 * t);
-        search_best_sol();
+        if (init_target(this->g_best) > init_target(this->pop[index_best_target()])){
+            this->g_best = this->pop[index_best_target()];
+        }
+        //search_best_sol();
+
+        //std::cout << "New Fitness: " << init_target(this->pop[index_best_target()])<< std::endl;
+        //std::cout << "Epoche: " << t+1 << " Current Best: " << init_target(this->pop[index_best_target()]) << " Global Best: " << init_target(this->g_best)<< std::endl;
 
         t +=1;
     }
@@ -153,12 +169,8 @@ Agent* OriginalBA::init_bat()
 {
     // Génération d'un nombre aléatoire selon une distribution uniforme
     std::uniform_real_distribution<double> distribution(this->Lb, this->Ub);
-    //std::uniform_real_distribution<double> distributionVelo(-50.0, 50.0);
-    std::uniform_real_distribution<double> distributionFrequency(this->pfMin, this->pfMax);
 
     Agent* bats = new Agent();
-
-    bats->pulse_frequency = distributionFrequency(generator);
 
     for (int i = 0; i < this->dimention; ++i) {
         bats->solution.push_back(distribution(this->generator));
@@ -168,14 +180,16 @@ Agent* OriginalBA::init_bat()
     return bats;
 }
 
-double OriginalBA::init_fitness(Agent* bat)
+double OriginalBA::init_target(Agent* bat)
 {
     double sum = 0.0;
+    double sum1 = 0.0;
+    double sum2 = 0.0;
     for (int i = 0; i < bat->solution.size(); ++i) {
 
         // Sphère
         if (fit_function == 1) {
-            sum += bat->solution[i]*bat->solution[i]; // (bat->solution[i] - 2) * (bat->solution[i] - 2);
+            sum += std::pow((bat->solution[i]), 2); // (bat->solution[i] - 2) * (bat->solution[i] - 2);
         }
 
             // Rastrigin
@@ -187,28 +201,39 @@ double OriginalBA::init_fitness(Agent* bat)
         else if (fit_function == 3) {
             if (i < bat->solution.size() - 1) {
                 sum += 100.0 * std::pow((bat->solution[i + 1] - std::pow(bat->solution[i], 2)), 2) +
-                       std::pow((bat->solution[i] - 1.0), 2);
+                       std::pow((1.0 - bat->solution[i]), 2);
+                       //std::pow((bat->solution[i] - 1.0), 2);
             }
         }
 
             // Ackley
         else if (fit_function == 4) {
-            double term1 = -20.0 * std::exp(-0.2 * std::sqrt(0.5 * (std::pow(bat->solution[i], 2) + std::pow(bat->solution[i + 1], 2))));
-            double term2 = -std::exp(0.5 * (std::cos(2.0 * M_PI * bat->solution[i]) + std::cos(2.0 * M_PI * bat->solution[i + 1])));
-            sum += term1 + term2 + 20.0 + std::exp(1.0);
-            i++; // Because Ackley function is typically defined for two dimensions, we increment i again.
+            sum1 += std::pow(bat->solution[i], 2);
+            sum2 += std::cos(2.0 * M_PI * bat->solution[i]);
+
+//            double term1 = -20.0 * std::exp(-0.2 * std::sqrt(0.5 * (std::pow(bat->solution[i], 2) + std::pow(bat->solution[i + 1], 2))));
+//            double term2 = -std::exp(0.5 * (std::cos(2.0 * M_PI * bat->solution[i]) + std::cos(2.0 * M_PI * bat->solution[i + 1])));
+//            sum += term1 + term2 + 20.0 + std::exp(1.0);
         }
     }
+
+    if (fit_function == 4) {
+        double term1 = -20.0 * std::exp(-0.2 * std::sqrt(sum1 / bat->solution.size()));
+        double term2 = -std::exp(sum2 / bat->solution.size());
+
+        sum = term1 + term2 + 20.0 + std::exp(1.0);
+    }
+
     return sum;
 }
 
-int OriginalBA::index_best_fitness()
+int OriginalBA::index_best_target()
 {
-    int min = this->fitness[0];
+    int min = this->target[0];
     int best_index = 0;
-    for (int i = 1; i < this->fitness.size(); ++i) {
-        if (this->fitness[i] < min){
-            min = this->fitness[i];
+    for (int i = 1; i < this->target.size(); ++i) {
+        if (this->target[i] < min){
+            min = this->target[i];
             best_index = i;
         }
     }
@@ -225,13 +250,7 @@ double OriginalBA::random(double min, double max)
     return distribution(gen);
 }
 
-double OriginalBA::mean_loudness()
+double OriginalBA::result()
 {
-    double sum = 0.0;
-
-    for (int i = 0; i < this->popSize; ++i) {
-       // sum += this->pop[i]->loudness;
-    }
-
-    return sum / this->popSize;
+    return this->init_target(this->g_best);
 }

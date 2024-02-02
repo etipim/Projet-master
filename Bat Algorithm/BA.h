@@ -21,17 +21,17 @@
 
 class OriginalBA {
 public:
-    OriginalBA(int epoch = 1000, int popSize = 50, double loudness = 0.8, double pulse_rate = 0.95, double pfMin = 0., double pfMax = 10, int dimention = 30, int fit_function = 1);
-    Agent solve();
+    OriginalBA(int epoch = 1000, int popSize = 50, double Ub = 10, double Lb = -10, double pulse_rate = 0.95, double pfMin = 0., double pfMax = 10., int dimention = 30, int fit_function = 1);
     void generate_population();
     void search_best_sol();
-    void bat_algo();
+    void solve();
+    double result();
 private:
     Agent* init_bat(); //std::vector<int> init_bat();
-    double init_fitness(Agent* bat);
-    int index_best_fitness();
+    double init_target(Agent* bat);
+    int index_best_target();
     double random(double min, double max);
-    double mean_loudness();
+    std::vector<double> init_velo();
 
 
     Agent generateEmptyAgent(int solution);
@@ -40,10 +40,11 @@ private:
 
 
     std::vector<Agent*> pop;  //std::vector<std::vector<int>> pop;
-    std::vector<double> fitness;
+    std::vector<double> target;
+    std::vector<std::vector<double>> velocity;
 
     Agent* g_best;
-    double best_fitness;
+    double best_target;
     int fit_function;
 
     int epoch;
